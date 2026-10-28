@@ -1,0 +1,169 @@
+:root {
+  --ink: #000;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: #000;
+  font-family: 'Pixelated MS Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+  -webkit-font-smoothing: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: #000080;
+}
+
+.desktop {
+  position: relative;
+  min-height: 100dvh;
+  width: 100dvw;
+  display: flex;
+  flex-direction: column;
+}
+
+.starfield-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.desktop-bar,
+.desktop-main {
+  position: relative;
+  z-index: 1;
+}
+
+.desktop-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: #c0c0c0;
+  border-bottom: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+}
+
+.desktop-brand {
+  padding: 0 8px;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.desktop-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.desktop-main > *:not(.docs-shell) {
+  padding: 16px;
+  width: min(1100px, 100%);
+  margin: 0 auto;
+}
+
+/* docs：左侧栏 + 正文铺满 */
+.docs-shell {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  width: 100%;
+  background: #c0c0c0;
+}
+
+.docs-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  background: #c0c0c0;
+}
+
+.docs-sidebar-title {
+  padding: 8px 10px;
+  font-weight: 700;
+  border-bottom: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+}
+
+.docs-sidebar-nav {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  overflow: auto;
+}
+
+.docs-nav-link {
+  text-decoration: none;
+  display: block;
+}
+
+.docs-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #fff;
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+  margin: 6px;
+}
+
+.docs-content-bar {
+  flex: none;
+  padding: 6px 10px;
+  background: #000080;
+  color: #fff;
+}
+
+.docs-content-bar .text-root {
+  color: #fff !important;
+}
+
+.docs-content-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px 32px;
+}
+
+@media (max-width: 720px) {
+  .docs-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .docs-sidebar {
+    border-right: none;
+    border-bottom: 2px solid;
+    border-color: #fff #808080 #808080 #fff;
+    max-height: 40vh;
+  }
+}
+
+.mdx-body pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+}

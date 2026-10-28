@@ -1,0 +1,42 @@
+{
+  "name": "@ofc-gm/framework",
+  "version": "1.0.0",
+  "description": "WebRTC game framework (Connection wraps simple-peer)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build --config vite.lib.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "jest",
+    "dev:playground": "vite"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.27.0",
+  "devDependencies": {
+    "@jest/globals": "^30.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "@types/simple-peer": "^9.11.9",
+    "buffer": "^6.0.3",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.9.0",
+    "vite": "^6.0.0",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "dependencies": {
+    "simple-peer": "^9.11.1"
+  }
+}

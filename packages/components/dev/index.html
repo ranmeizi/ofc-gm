@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ofc-signal-exchange · WC Modal</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font: 14px/1.5 "PingFang SC", "Segoe UI", sans-serif;
+        color: #1c2430;
+        background:
+          radial-gradient(800px 360px at 10% -10%, #d9ebe3, transparent),
+          #e8eef4;
+      }
+      .page {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 28px 16px 48px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 20px;
+      }
+      .sub,
+      a {
+        color: #667788;
+        font-size: 13px;
+      }
+      .grid {
+        display: grid;
+        gap: 16px;
+        margin-top: 20px;
+      }
+      @media (min-width: 840px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .seat {
+        background: #fff;
+        border: 1px solid #d8dee6;
+        border-radius: 14px;
+        padding: 14px;
+      }
+      .seat h2 {
+        margin: 0 0 4px;
+        font-size: 15px;
+      }
+      .seat .hint {
+        margin: 0 0 12px;
+        color: #667788;
+        font-size: 12px;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+        align-items: center;
+      }
+      select,
+      button {
+        font: inherit;
+        border-radius: 10px;
+        border: 1px solid #d8dee6;
+        background: #fff;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #1f6f55;
+        border-color: #1f6f55;
+        color: #fff;
+      }
+      .peer-tag {
+        font: 12px/1.4 ui-monospace, monospace;
+        color: #667788;
+        margin-bottom: 10px;
+        min-height: 1.4em;
+      }
+      .peer-tag.ready {
+        color: #067647;
+      }
+      /* 模拟宿主 App 的 modal */
+      .modal-mask {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 32, 0.45);
+        display: none;
+        place-items: center;
+        padding: 16px;
+        z-index: 20;
+      }
+      .modal-mask.show {
+        display: grid;
+      }
+      .modal {
+        width: min(560px, 100%);
+        background: #fff;
+        border-radius: 16px;
+        padding: 18px 18px 16px;
+        box-shadow: 0 16px 40px rgba(15, 23, 32, 0.18);
+      }
+      .modal-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .modal-top button {
+        border: none;
+        background: transparent;
+        color: #667788;
+        cursor: pointer;
+      }
+      #log {
+        margin-top: 16px;
+        padding: 10px;
+        min-height: 72px;
+        border-radius: 8px;
+        background: #101820;
+        color: #d7e2ee;
+        font: 12px/1.45 ui-monospace, monospace;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>手动信令 Modal（Web Component）</h1>
+      <p class="sub">
+        PeerConnection 由页面创建 → 传给
+        <code>&lt;ofc-signal-exchange&gt;</code> ·
+        <a href="./react.html">React 用法 →</a>
+      </p>
+
+      <div class="grid">
+        <section class="seat" data-role="offer">
+          <h2>发起方（offer）</h2>
+          <p class="hint">宿主：new PeerConnection → setRole/setNetwork → createPeer → 传入组件</p>
+          <div class="toolbar">
+            <label>
+              network
+              <select class="network">
+                <option value="lan">lan</option>
+                <option value="internet">internet</option>
+              </select>
+            </label>
+            <button class="btn-create" type="button">1. 创建 peer</button>
+            <button class="btn-open primary" type="button" disabled>2. 打开 Modal</button>
+          </div>
+          <div class="peer-tag">peer: 未创建</div>
+        </section>
+
+        <section class="seat" data-role="answer">
+          <h2>接收方（answer）</h2>
+          <p class="hint">另一端同样外部创建 peer，再打开 Modal 粘贴发起方连接码</p>
+          <div class="toolbar">
+            <label>
+              network
+              <select class="network">
+                <option value="lan">lan</option>
+                <option value="internet">internet</option>
+              </select>
+            </label>
+            <button class="btn-create" type="button">1. 创建 peer</button>
+            <button class="btn-open primary" type="button" disabled>2. 打开 Modal</button>
+          </div>
+          <div class="peer-tag">peer: 未创建</div>
+        </section>
+      </div>
+
+      <pre id="log">ready — 两边各自「创建 peer」再「打开 Modal」，复制粘贴连接码</pre>
+    </div>
+
+    <div id="mask" class="modal-mask">
+      <div class="modal">
+        <div class="modal-top">
+          <strong id="modal-title">连接设置</strong>
+          <button id="btn-close" type="button">关闭</button>
+        </div>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import '@ofc-gm/components'
+      import { PeerConnection } from '@ofc-gm/framework'
+
+      const mask = document.getElementById('mask')
+      const modalBody = document.getElementById('modal-body')
+      const modalTitle = document.getElementById('modal-title')
+      const logEl = document.getElementById('log')
+
+      /** @type {Record<string, import('@ofc-gm/framework').PeerConnection | undefined>} */
+      const peers = { offer: undefined, answer: undefined }
+      let activeRole = null
+
+      const line = (t) => {
+        logEl.textContent += `\n[${new Date().toLocaleTimeString()}] ${t}`
+      }
+
+      function bindExchange(ex) {
+        ex.addEventListener('open', () => line(`${activeRole} · channel open ✓`))
+        ex.addEventListener('accept', () => line(`${activeRole} · accept ok`))
+        ex.addEventListener('copy', (e) =>
+          line(`${activeRole} · copy ${e.detail.ok ? 'ok' : 'fail'}`),
+        )
+        ex.addEventListener('error', (e) =>
+          line(`${activeRole} · error: ${e.detail?.message || e.detail}`),
+        )
+      }
+
+      function openModal(role) {
+        const peer = peers[role]
+        if (!peer) {
+          line(`${role} · 请先创建 peer`)
+          return
+        }
+        activeRole = role
+        modalTitle.textContent = role === 'offer' ? '发起方 · 连接设置' : '接收方 · 连接设置'
+
+        const ex = document.createElement('ofc-signal-exchange')
+        modalBody.replaceChildren(ex)
+        // 先挂载再赋值，确保 Lit 属性 setter 生效
+        ex.peer = peer
+        bindExchange(ex)
+
+        mask.classList.add('show')
+        line(`modal open · ${role} · peer 已传入组件`)
+      }
+
+      function closeModal() {
+        mask.classList.remove('show')
+        modalBody.replaceChildren()
+        line(`modal closed · peer 仍由页面持有（未 destroy）`)
+        activeRole = null
+      }
+
+      for (const seat of document.querySelectorAll('.seat')) {
+        const role = seat.dataset.role
+        const networkEl = seat.querySelector('.network')
+        const tag = seat.querySelector('.peer-tag')
+        const btnCreate = seat.querySelector('.btn-create')
+        const btnOpen = seat.querySelector('.btn-open')
+
+        btnCreate.onclick = () => {
+          peers[role]?.destroy()
+          const peer = new PeerConnection()
+          peer.setNetwork(networkEl.value)
+          peer.setRole(role)
+          peer.createPeer()
+          peers[role] = peer
+          tag.textContent = `peer: 已创建 · role=${role} · network=${networkEl.value}`
+          tag.classList.add('ready')
+          btnOpen.disabled = false
+          line(`${role} · PeerConnection 已在页面创建（尚未传给组件）`)
+        }
+
+        btnOpen.onclick = () => openModal(role)
+      }
+
+      document.getElementById('btn-close').onclick = closeModal
+      mask.addEventListener('click', (e) => {
+        if (e.target === mask) closeModal()
+      })
+    </script>
+  </body>
+</html>

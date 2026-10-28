@@ -1,0 +1,30 @@
+# PeerConnection
+
+`PeerConnection` 是框架里 WebRTC 的薄封装：选角色 / 网络 → `createPeer` → 交换 SDP → DataChannel。
+
+## 最小流程
+
+```ts
+import { PeerConnection } from '@ofc-gm/framework'
+
+const peer = new PeerConnection()
+peer.setNetwork('lan')
+peer.setRole('offer')
+peer.createPeer()
+
+const offer = await peer.generateSDP()
+// 把 offer 交给对方（剪贴板或 @ofc-gm/ws）
+
+await peer.acceptRemoteSDP(answerJson)
+```
+
+## 角色
+
+- **offer**：先 `generateSDP`，再 Accept 对方的 answer
+- **answer**：先 Accept 对方的 offer，再 `generateSDP` 回传
+
+## 相关
+
+- 手动交换测试：`pnpm dev:testing` → Peer · 手动信令
+- WS 交换测试：同站 → Peer · WebSocket 信令（需 `pnpm dev:ws`）
+- UI 组件：`@ofc-gm/components` 的 `<ofc-signal-exchange peer={peer} />`

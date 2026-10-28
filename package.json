@@ -1,0 +1,19 @@
+{
+  "name": "ofc-gm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Office WebRTC mini-game monorepo",
+  "scripts": {
+    "build": "pnpm -r --filter @ofc-gm/* build",
+    "dev:testing": "pnpm --filter @ofc-gm/testing dev",
+    "dev:components": "pnpm --filter @ofc-gm/components dev",
+    "dev:home": "pnpm --filter homepage dev",
+    "dev:ws": "pnpm --filter @ofc-gm/ws dev",
+    "test": "pnpm --filter @ofc-gm/framework test",
+    "typecheck": "pnpm -r --filter @ofc-gm/* typecheck"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.27.0"
+}
