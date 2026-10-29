@@ -77,6 +77,11 @@ export const EXAMPLE_PAGES: ExamplePage[] = [
     title: '文件传输',
     description: 'Host / Guest 互传文件并下载',
   },
+  {
+    slug: 'desk-kof',
+    title: 'Desk KOF',
+    description: 'Fork Magicherry KOF + 自绘角色 + OFC 按键同步',
+  },
 ]
 
 export function exampleHref(slug: string) {

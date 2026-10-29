@@ -202,7 +202,7 @@ export function ExamplesWelcome() {
             </Button>
           </div>
           <Text color="#c0c0c0" variant="small" sx={{ marginTop: '10px' }}>
-            hello-window 可不连；聊天 / 传文件需要 CONNECT=已连接
+            hello-window 可不连；聊天 / 传文件 / Desk KOF 需要 CONNECT=已连接
           </Text>
         </div>
       )}

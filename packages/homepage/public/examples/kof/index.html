@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Desk KOF (fork)</title>
+    <link rel="stylesheet" href="./static/css/base.css" />
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #111;
+        overflow: hidden;
+      }
+      #stage {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      #scaler {
+        position: relative;
+        overflow: hidden;
+        flex: none;
+        line-height: 0;
+      }
+      #kof {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1280px;
+        height: 720px;
+        transform-origin: top left;
+        background-image: linear-gradient(#1a2a1a 0%, #3a5a40 52%, #2a4030 52%, #2a4030 100%);
+        background-size: 100% 100%;
+        overflow: hidden;
+      }
+      #kof canvas {
+        display: block;
+      }
+      #hud {
+        position: fixed;
+        left: 8px;
+        bottom: 8px;
+        right: 8px;
+        color: #ffffe0;
+        font: 12px Tahoma, sans-serif;
+        z-index: 10;
+        text-shadow: 1px 1px 0 #000;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="scaler">
+        <div id="kof"></div>
+      </div>
+    </div>
+    <div id="hud">WASD 移动 · J 拳 · K 踢 · Shift 冲刺 · Space 必杀(能量满)</div>
+    <script type="module">
+      import { KOF } from './static/js/base.js'
+      import { bootOfcBridge } from './static/js/ofc-bridge.js'
+
+      const params = new URLSearchParams(location.search)
+      const localId = params.get('role') === 'host' ? 1 : 0
+      const skin0 = params.get('skin0') || 'clerk'
+      const skin1 = params.get('skin1') || 'manager'
+
+      function fitKof() {
+        const stage = document.getElementById('stage')
+        const scaler = document.getElementById('scaler')
+        const kof = document.getElementById('kof')
+        if (!stage || !scaler || !kof) return
+        const s = Math.min(stage.clientWidth / 1280, stage.clientHeight / 720)
+        scaler.style.width = `${1280 * s}px`
+        scaler.style.height = `${720 * s}px`
+        kof.style.transform = `scale(${s})`
+      }
+
+      const game = new KOF('kof', {
+        localId,
+        skins: [skin0, skin1],
+      })
+
+      bootOfcBridge(game)
+      fitKof()
+      window.addEventListener('resize', fitKof)
+      requestAnimationFrame(() => requestAnimationFrame(fitKof))
+
+      document.getElementById('hud').textContent +=
+        localId === 1 ? ' | 你是 Host(右/红 manager)' : ' | 你是 Guest(左/蓝 clerk)'
+    </script>
+  </body>
+</html>
