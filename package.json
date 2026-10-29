@@ -10,7 +10,10 @@
     "dev:home": "pnpm --filter homepage dev",
     "dev:ws": "pnpm --filter @ofc-gm/ws dev",
     "test": "pnpm --filter @ofc-gm/framework test",
-    "typecheck": "pnpm -r --filter @ofc-gm/* typecheck"
+    "typecheck": "pnpm -r --filter @ofc-gm/* typecheck",
+    "publish:framework": "pnpm --filter @ofc-gm/framework publish --access public --no-git-checks",
+    "publish:components": "pnpm --filter @ofc-gm/components publish --access public --no-git-checks",
+    "publish:libs": "pnpm --filter @ofc-gm/framework publish --access public --no-git-checks && pnpm --filter @ofc-gm/components publish --access public --no-git-checks"
   },
   "keywords": [],
   "author": "",

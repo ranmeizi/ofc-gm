@@ -1,7 +1,7 @@
 {
   "name": "@ofc-gm/framework",
   "version": "1.0.0",
-  "description": "WebRTC game framework (Connection wraps simple-peer)",
+  "description": "Office WebRTC mini-game framework — PeerConnection, Room, startHost",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,17 +12,38 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "vite build --config vite.lib.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
-    "dev:playground": "vite"
+    "dev:playground": "vite",
+    "prepublishOnly": "pnpm run build"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "webrtc",
+    "p2p",
+    "datachannel",
+    "game",
+    "ofc-gm"
+  ],
+  "author": "ranmeizi",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ranmeizi/ofc-gm.git",
+    "directory": "packages/framework"
+  },
+  "homepage": "https://ranmeizi.github.io/ofc-gm/",
+  "bugs": {
+    "url": "https://github.com/ranmeizi/ofc-gm/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "packageManager": "pnpm@10.27.0",
   "devDependencies": {
     "@jest/globals": "^30.0.0",

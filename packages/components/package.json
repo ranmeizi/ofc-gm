@@ -1,7 +1,7 @@
 {
   "name": "@ofc-gm/components",
   "version": "0.1.0",
-  "description": "OFC-GM UI: Lit Web Components base + React wrappers",
+  "description": "OFC-GM UI: Lit Web Components + React wrappers for signaling",
   "type": "module",
   "main": "./lib/index.js",
   "module": "./lib/index.js",
@@ -20,13 +20,16 @@
   },
   "typesVersions": {
     "*": {
-      "react": ["react.d.ts"]
+      "react": [
+        "react.d.ts"
+      ]
     }
   },
   "files": [
     "lib",
     "index.d.ts",
-    "react.d.ts"
+    "react.d.ts",
+    "readme.md"
   ],
   "sideEffects": [
     "./lib/index.js",
@@ -40,6 +43,7 @@
     "clean": "rm -rf lib index.d.ts react.d.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepack": "pnpm run clean && pnpm run build",
+    "prepublishOnly": "pnpm run build",
     "dev": "vite"
   },
   "keywords": [
@@ -47,13 +51,27 @@
     "lit",
     "react",
     "webrtc",
+    "signaling",
     "ofc-gm"
   ],
-  "author": "",
+  "author": "ranmeizi",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ranmeizi/ofc-gm.git",
+    "directory": "packages/components"
+  },
+  "homepage": "https://ranmeizi.github.io/ofc-gm/",
+  "bugs": {
+    "url": "https://github.com/ranmeizi/ofc-gm/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "packageManager": "pnpm@10.27.0",
   "dependencies": {
-    "@ofc-gm/framework": "workspace:*",
+    "@ofc-gm/framework": "workspace:^",
     "lit": "^3.2.0"
   },
   "peerDependencies": {
