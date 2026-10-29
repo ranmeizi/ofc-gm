@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ConnectStatus } from '@/components/connect-status'
 import { SiteNav } from '@/components/site-nav'
 import { StarFieldBackdrop } from '@/components/star-field-backdrop'
 import './globals.css'
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <header className="desktop-bar">
             <strong className="desktop-brand">OFC-GM</strong>
             <SiteNav />
+            <ConnectStatus />
           </header>
           <main className="desktop-main">{children}</main>
         </div>

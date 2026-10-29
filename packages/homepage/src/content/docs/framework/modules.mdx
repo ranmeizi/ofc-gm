@@ -1,0 +1,57 @@
+# 写 server / client
+
+把玩法拆成两个文件即可。建房的人两份都要；加入的人只需要 client。
+
+## server.ts
+
+负责规则、权威状态、何时同步给所有人。
+
+```ts
+import type { ServerModule } from '@ofc-gm/framework'
+
+export const server: ServerModule = {
+  onJoin(s, clientId) {
+    // 有人进房
+  },
+  onMessage(s, clientId, data) {
+    // 处理某人发来的输入，再广播状态
+    s.broadcast(String(data))
+  },
+  onLeave(s, clientId) {
+    // 有人离开
+  },
+}
+```
+
+可用方法：
+
+- `s.broadcast(data)` — 发给所有人（包括本机玩家）
+- `s.send(clientId, data)` — 发给指定人
+- `s.clients()` — 当前座位 id 列表
+
+## client.ts
+
+负责渲染，以及把本地操作发出去。
+
+```ts
+import type { ClientModule, ClientHandle } from '@ofc-gm/framework'
+
+let api: ClientHandle | undefined
+
+export const client: ClientModule = {
+  onConnect(c) {
+    api = c
+    // 例如按键时：api.send(JSON.stringify({ type: 'move', dir: 'up' }))
+  },
+  onMessage(data) {
+    // 收到权威状态，更新画面
+  },
+  onClose() {
+    api = undefined
+  },
+}
+```
+
+游戏循环、用 React 还是 Canvas，都由你自己决定。
+
+接下来：[建立连接](/docs/framework/host-session)。

@@ -1,0 +1,40 @@
+# 建立连接
+
+建房方用 `createHostSession` 开一条 WebRTC 连接。信令界面（复制粘贴、弹窗、WebSocket）你自己做，或用 `@ofc-gm/components`。
+
+默认：本机是 **answer**（对方先发 offer），网络 **lan**。
+
+```ts
+import { createHostSession } from '@ofc-gm/framework'
+
+const session = createHostSession({ network: 'lan' })
+
+await session.acceptRemoteSignal(guestOfferJson)
+const answerJson = await session.generateLocalSignal()
+// 把 answerJson 发给对方
+
+const connection = await session.whenReady()
+```
+
+取消连接：`session.cancel()`。
+
+## 常用选项
+
+| 选项 | 默认 | 说明 |
+| --- | --- | --- |
+| `network` | `'lan'` | `'internet'` 会走公网 STUN |
+| `role` | `'answer'` | 需要本机先出 SDP 时改成 `'offer'` |
+| `messageType` | `'text'` | 或 `'binary'` |
+
+## 你能调用的方法
+
+| 方法 | 作用 |
+| --- | --- |
+| `acceptRemoteSignal(raw)` | 粘贴 / 收到对方的 SDP |
+| `generateLocalSignal()` | 生成本地 SDP 字符串 |
+| `whenReady()` | 等到通道连通，得到 `Connection` |
+| `cancel()` | 中止并销毁 |
+
+通道好了之后：[开局 startHost](/docs/framework/start-host)。
+
+若要完全自己管 Peer，见 [PeerConnection](/docs/framework/peer-connection)。

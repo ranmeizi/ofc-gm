@@ -1,0 +1,39 @@
+# 开局
+
+连接成功后调用 `startHost`，传入你的 `server`、`client` 和已连通的连接。
+
+```ts
+import { createHostSession, startHost } from '@ofc-gm/framework'
+import { server } from './server'
+import { client } from './client'
+
+const session = createHostSession({ network: 'lan' })
+await session.acceptRemoteSignal(guestOffer)
+await session.generateLocalSignal()
+await session.whenReady()
+
+const game = startHost({ session, server, client })
+
+// 本机发输入
+game.client.send(JSON.stringify({ type: 'ping' }))
+
+// 权威广播（一般在 server.onMessage 里做）
+game.server.broadcast('hello')
+
+// 再来一个已连上的玩家
+// game.attachGuest(anotherConnection)
+
+// 结束
+game.stop()
+```
+
+也可以不传 `session`，直接传已经 `connect()` 好的 `connection`。
+
+## 返回值
+
+| 字段 | 用途 |
+| --- | --- |
+| `client.send` | 本机玩家发往权威 |
+| `server.broadcast` / `send` / `clients` | 权威侧 API |
+| `attachGuest(connection)` | 再接入一名玩家 |
+| `stop()` | 结束本局 |

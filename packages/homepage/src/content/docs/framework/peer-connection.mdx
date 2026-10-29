@@ -1,30 +1,28 @@
 # PeerConnection
 
-`PeerConnection` 是框架里 WebRTC 的薄封装：选角色 / 网络 → `createPeer` → 交换 SDP → DataChannel。
-
-## 最小流程
+不想用 `createHostSession` 时，可以自己管底层连接。
 
 ```ts
-import { PeerConnection } from '@ofc-gm/framework'
+import { PeerConnection, Connection, startHost } from '@ofc-gm/framework'
+import { server } from './server'
+import { client } from './client'
 
 const peer = new PeerConnection()
 peer.setNetwork('lan')
-peer.setRole('offer')
+peer.setRole('answer') // 或 'offer'
 peer.createPeer()
 
-const offer = await peer.generateSDP()
-// 把 offer 交给对方（剪贴板或 @ofc-gm/ws）
+// offer 端：先 generateSDP，再 accept 对方的 answer
+// answer 端：先 accept 对方的 offer，再 generateSDP
 
-await peer.acceptRemoteSDP(answerJson)
+peer.onChannelOpen = () => {
+  const connection = new Connection(peer, 'text')
+  connection.connect()
+  startHost({ connection, server, client })
+}
 ```
 
-## 角色
+- **offer**：先 `generateSDP()`，再 `acceptRemoteSDP(answer)`
+- **answer**：先 `acceptRemoteSDP(offer)`，再 `generateSDP()`
 
-- **offer**：先 `generateSDP`，再 Accept 对方的 answer
-- **answer**：先 Accept 对方的 offer，再 `generateSDP` 回传
-
-## 相关
-
-- 手动交换测试：`pnpm dev:testing` → Peer · 手动信令
-- WS 交换测试：同站 → Peer · WebSocket 信令（需 `pnpm dev:ws`）
-- UI 组件：`@ofc-gm/components` 的 `<ofc-signal-exchange peer={peer} />`
+手动交换 UI 可用 `@ofc-gm/components` 的 `OfcSignalExchange`，把外部创建好的 `peer` 传进去即可。

@@ -1,29 +1,31 @@
-# Getting Started
-
-## 仓库包
-
-| 包 | 作用 |
-| --- | --- |
-| `@ofc-gm/framework` | WebRTC / PeerConnection / Connection |
-| `@ofc-gm/components` | 信令交换 Web Component + React 包装 |
-| `@ofc-gm/ws` | 两人房 WebSocket 信令中继 |
-| `homepage` | 本文档站 + examples |
-
-## 本地开发
+# 安装
 
 ```bash
-pnpm install
-pnpm dev:home      # 文档站
-pnpm dev:ws        # 信令服务（WS 交换测试需要）
-pnpm dev:testing   # 交互测试页
+pnpm add @ofc-gm/framework
 ```
 
-## 怎么写文档
+常用配套：
 
-在 `content/docs/` 新增 `.mdx`，并在 `src/lib/docs.ts` 的 `DOC_PAGES` 里登记 slug。
+| 包 | 什么时候用 |
+| --- | --- |
+| `@ofc-gm/components` | 页面里嵌入手动交换信令的 UI |
+| `@ofc-gm/ws` | 用 WebSocket 自动传 SDP（需自己部署或本地 `pnpm dev:ws`） |
 
-```mdx
-# 标题
+## 最小流程
 
-正文支持 **Markdown**，也可以嵌入 React 组件。
+```ts
+import { createHostSession, startHost } from '@ofc-gm/framework'
+import { server } from './server'
+import { client } from './client'
+
+const session = createHostSession({ network: 'lan' })
+
+// 用你的 UI 完成信令交换……
+await session.acceptRemoteSignal(guestOffer)
+const answer = await session.generateLocalSignal()
+await session.whenReady()
+
+startHost({ session, server, client })
 ```
+
+下一步：[写 server / client](/docs/framework/modules)。

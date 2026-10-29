@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:pages": "GITHUB_PAGES=1 next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -12,6 +13,8 @@
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
     "@next/mdx": "^16.4.3",
+    "@ofc-gm/framework": "workspace:*",
+    "@ofc-gm/ws": "workspace:*",
     "@types/mdx": "^2.0.14",
     "next": "16.4.3",
     "react": "19.3.0",

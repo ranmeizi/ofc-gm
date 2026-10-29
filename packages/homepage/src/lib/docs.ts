@@ -10,20 +10,38 @@ export type DocPage = {
 export const DOC_PAGES: DocPage[] = [
   {
     slug: [],
-    title: 'Overview',
-    description: 'OFC-GM 文档与示例总览',
+    title: '介绍',
+    description: 'OFC-GM 是什么',
     file: 'index',
   },
   {
     slug: ['getting-started'],
-    title: 'Getting Started',
-    description: '安装、本地开发与包结构',
+    title: '安装',
+    description: '安装依赖与最小流程',
     file: 'getting-started',
   },
   {
+    slug: ['framework', 'modules'],
+    title: '写 server / client',
+    description: '游戏逻辑与表现怎么拆',
+    file: 'framework/modules',
+  },
+  {
+    slug: ['framework', 'host-session'],
+    title: '建立连接',
+    description: 'createHostSession 交换信令',
+    file: 'framework/host-session',
+  },
+  {
+    slug: ['framework', 'start-host'],
+    title: '开局',
+    description: 'startHost 挂上模块开始玩',
+    file: 'framework/start-host',
+  },
+  {
     slug: ['framework', 'peer-connection'],
-    title: 'PeerConnection',
-    description: 'WebRTC 底层连接与 SDP 交换',
+    title: '自定义连接',
+    description: '自己使用 PeerConnection',
     file: 'framework/peer-connection',
   },
 ]
@@ -48,6 +66,16 @@ export const EXAMPLE_PAGES: ExamplePage[] = [
     slug: 'hello-window',
     title: 'Hello Window',
     description: '用 retro-react Window / Button 搭一个小窗口',
+  },
+  {
+    slug: 'chat',
+    title: '聊天室',
+    description: 'Host / Guest 双座位文字聊天',
+  },
+  {
+    slug: 'file-transfer',
+    title: '文件传输',
+    description: 'Host / Guest 互传文件并下载',
   },
 ]
 

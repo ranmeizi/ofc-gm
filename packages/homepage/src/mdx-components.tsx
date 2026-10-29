@@ -1,7 +1,7 @@
 import type { MDXComponents } from 'mdx/types'
 import Link from 'next/link'
 import { Text } from 'retro-react'
-import type { ComponentPropsWithoutRef } from 'react'
+import type { ComponentPropsWithoutRef, CSSProperties } from 'react'
 
 function Heading({
   variant,
@@ -21,6 +21,9 @@ function Heading({
     </Text>
   )
 }
+
+const mono: CSSProperties['fontFamily'] =
+  'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
 
 const components: MDXComponents = {
   h1: (props) => <Heading variant="h1" {...props} />,
@@ -46,40 +49,96 @@ const components: MDXComponents = {
     )
   },
   ul: (props) => (
-    <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem' }} {...props} />
+    <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem', color: '#000' }} {...props} />
   ),
   ol: (props) => (
-    <ol style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem' }} {...props} />
+    <ol style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem', color: '#000' }} {...props} />
   ),
-  li: (props) => <li style={{ marginBottom: '0.25rem' }} {...props} />,
-  code: (props) => (
-    <code
-      style={{
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-        fontSize: '0.9em',
-        background: '#fff',
-        border: '1px solid #808080',
-        padding: '0 0.25rem',
-      }}
-      {...props}
-    />
-  ),
-  pre: (props) => (
+  li: (props) => <li style={{ marginBottom: '0.25rem', color: '#000' }} {...props} />,
+  code: ({ className, children, ...props }) => {
+    // fenced block: <pre><code class="language-xxx">
+    const isBlock = typeof className === 'string' && className.includes('language-')
+    if (isBlock) {
+      return (
+        <code
+          className={className}
+          style={{
+            fontFamily: mono,
+            fontSize: 'inherit',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            color: 'inherit',
+            whiteSpace: 'inherit',
+          }}
+          {...props}
+        >
+          {children}
+        </code>
+      )
+    }
+    return (
+      <code
+        className={className}
+        style={{
+          fontFamily: mono,
+          fontSize: '0.9em',
+          background: '#ffffe0',
+          border: '1px solid #808080',
+          padding: '0 0.3rem',
+          color: '#000',
+        }}
+        {...props}
+      >
+        {children}
+      </code>
+    )
+  },
+  pre: ({ children, ...props }) => (
     <pre
       style={{
         margin: '0 0 1rem',
         padding: '10px 12px',
         overflow: 'auto',
-        background: '#000080',
-        color: '#fff',
+        background: '#ffffe0',
+        color: '#000',
         border: '2px solid',
         borderColor: '#808080 #fff #fff #808080',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-        fontSize: 12,
-        lineHeight: 1.45,
+        fontFamily: mono,
+        fontSize: 13,
+        lineHeight: 1.5,
+        whiteSpace: 'pre',
+      }}
+      {...props}
+    >
+      {children}
+    </pre>
+  ),
+  table: (props) => (
+    <table
+      style={{
+        width: '100%',
+        borderCollapse: 'collapse',
+        margin: '0 0 1rem',
+        fontSize: 14,
+        color: '#000',
       }}
       {...props}
     />
+  ),
+  th: (props) => (
+    <th
+      style={{
+        textAlign: 'left',
+        border: '1px solid #808080',
+        padding: '6px 8px',
+        background: '#c0c0c0',
+      }}
+      {...props}
+    />
+  ),
+  td: (props) => (
+    <td style={{ border: '1px solid #808080', padding: '6px 8px' }} {...props} />
   ),
 }
 

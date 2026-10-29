@@ -59,6 +59,13 @@ a {
   background: #c0c0c0;
   border-bottom: 2px solid;
   border-color: #fff #808080 #808080 #fff;
+  min-height: 40px;
+}
+
+.desktop-bar .navbar-root {
+  flex: 1;
+  min-width: 0;
+  width: auto !important;
 }
 
 .desktop-brand {
@@ -161,9 +168,18 @@ a {
   }
 }
 
+/* MDX 正文保证可读；代码块样式以 mdx-components 为准 */
+.mdx-body {
+  color: #000;
+}
+
+.mdx-body pre,
 .mdx-body pre code {
-  background: transparent;
-  border: none;
-  padding: 0;
-  color: inherit;
+  color: #000 !important;
+  background: #ffffe0 !important;
+}
+
+.mdx-body pre code {
+  border: none !important;
+  padding: 0 !important;
 }

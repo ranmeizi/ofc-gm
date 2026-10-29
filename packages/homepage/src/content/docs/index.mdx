@@ -1,14 +1,17 @@
-# OFC-GM Docs
+# OFC-GM
 
-办公场景 WebRTC 小游戏框架的文档站（App Router + MDX + SSG）。
+用 WebRTC 在浏览器里开局域网 / 公网小游戏：一方建房当权威，其他人连上来一起玩。
 
-## 你在看什么
+你主要写两份逻辑：
 
-- **Docs**：写在 `content/docs/*.mdx`，构建时静态生成
-- **Examples**：可交互的 React 示例页，UI 用 [retro-react](https://github.com/retro-react/retro-react)
+1. **server** — 游戏规则与状态
+2. **client** — 画面与输入
 
-## 下一步
+连接（复制粘贴信令或 WebSocket）做好之后，再交给框架开房。
 
-1. 读 [Getting Started](/docs/getting-started)
-2. 看 [PeerConnection](/docs/framework/peer-connection)
-3. 打开 [Examples](/examples) 里的窗口示例
+## 从这里开始
+
+1. [安装](/docs/getting-started)
+2. [写 server / client](/docs/framework/modules)
+3. [建立连接](/docs/framework/host-session)
+4. [开局](/docs/framework/start-host)
