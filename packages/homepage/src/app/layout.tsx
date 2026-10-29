@@ -9,7 +9,8 @@ export const metadata: Metadata = {
     default: 'OFC-GM',
     template: '%s · OFC-GM',
   },
-  description: 'Office WebRTC mini-game framework — docs & examples',
+  description:
+    'OFC-GM — 办公室 Peer 小游戏框架。WebRTC DataChannel 直连，建房、信令、开玩。',
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
