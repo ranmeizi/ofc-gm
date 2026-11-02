@@ -1,37 +1,43 @@
 /**
- * 展示用 ICE：
- * - STUN：能直连就直连（不占你服务器带宽）
- * - TURN：打洞失败时走公开中继（Metered Open Relay，适合 demo）
+ * ICE：STUN + 可选 TURN（账号走 Vite 环境变量）
  *
- * 正式环境请换成自己的 coturn，或 localStorage 覆盖：
- *   localStorage.setItem('ofc-filedrop-ice', JSON.stringify([{ urls, username, credential }, ...]))
+ * .env / .env.local：
+ *   VITE_TURN_USERNAME=...
+ *   VITE_TURN_PASSWORD=...
+ *   VITE_TURN_HOST=asia.relay.metered.ca   # 可选
+ *
+ * 也可用 localStorage 整表覆盖：
+ *   localStorage.setItem('ofc-filedrop-ice', JSON.stringify([...]))
  */
-export const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun.qq.com' },
-  // 公开 TURN（展示兜底；优先 443/TCP，公司网更容易过）
-  {
-    urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turn:openrelay.metered.ca:80?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turn:openrelay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-]
+
+const TURN_USER = import.meta.env.VITE_TURN_USERNAME as string | undefined
+const TURN_PASS = import.meta.env.VITE_TURN_PASSWORD as string | undefined
+const TURN_HOST =
+  (import.meta.env.VITE_TURN_HOST as string | undefined) ||
+  'asia.relay.metered.ca'
+
+function buildIceServers(): RTCIceServer[] {
+  const servers: RTCIceServer[] = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.qq.com' },
+    { urls: 'stun:stun.relay.metered.ca:80' },
+  ]
+
+  if (TURN_USER && TURN_PASS) {
+    const auth = { username: TURN_USER, credential: TURN_PASS }
+    servers.push(
+      { urls: `turn:${TURN_HOST}:80`, ...auth },
+      { urls: `turn:${TURN_HOST}:80?transport=tcp`, ...auth },
+      { urls: `turn:${TURN_HOST}:443`, ...auth },
+      { urls: `turns:${TURN_HOST}:443?transport=tcp`, ...auth },
+    )
+  }
+
+  return servers
+}
+
+export const ICE_SERVERS: RTCIceServer[] = buildIceServers()
 
 const STORAGE_ICE = 'ofc-filedrop-ice'
 
