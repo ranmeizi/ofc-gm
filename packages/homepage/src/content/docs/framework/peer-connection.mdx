@@ -25,4 +25,6 @@ peer.onChannelOpen = () => {
 - **offer**：先 `generateSDP()`，再 `acceptRemoteSDP(answer)`
 - **answer**：先 `acceptRemoteSDP(offer)`，再 `generateSDP()`
 
+构造时可传入自定义 `iceServers`。打洞与 Metered 见 [TURN 中继](/docs/connection/turn)；交换 SDP 见 [手动信令](/docs/connection/manual) / [WebSocket](/docs/connection/websocket)。
+
 手动交换 UI 可用 `@ofc-gm/components` 的 `OfcSignalExchange`，把外部创建好的 `peer` 传进去即可。

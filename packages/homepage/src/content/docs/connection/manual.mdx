@@ -1,0 +1,65 @@
+# 手动信令交换
+
+两边各自打开页面，把 **SDP / 连接码** 复制给对方粘贴。  
+不依赖信令服务器，适合局域网 demo、排查问题、或暂时没有 WebSocket。
+
+## 流程（两人）
+
+约定：**建房方 = answer**，**加入方 = offer**（与 `createHostSession` 默认一致）。
+
+1. **Offer（客人）** 生成本地 SDP → 复制发给 Host  
+2. **Answer（房主）** 粘贴对方 offer → 生成本地 answer → 复制发回  
+3. **Offer** 粘贴 answer → 等待 DataChannel 打开  
+
+也可反过来：本机当 offer，对方当 answer，只要两端角色互补即可。
+
+## 用框架
+
+```ts
+import { createHostSession } from '@ofc-gm/framework'
+
+// 房主
+const host = createHostSession({ role: 'answer', network: 'lan' })
+await host.acceptRemoteSignal(guestOfferJson)
+const answerJson = await host.generateLocalSignal()
+const connection = await host.whenReady()
+
+// 客人
+const guest = createHostSession({ role: 'offer', network: 'lan' })
+const offerJson = await guest.generateLocalSignal()
+await guest.acceptRemoteSignal(hostAnswerJson)
+const connection2 = await guest.whenReady()
+```
+
+公网可把 `network` 设为 `'internet'`（带 STUN）。仍直连失败见 [TURN 中继](/docs/connection/turn)。
+
+## 用组件 UI
+
+`@ofc-gm/components` 提供手动交换面板：外部先创建好 `PeerConnection`，再交给 UI。
+
+```ts
+import { PeerConnection } from '@ofc-gm/framework'
+import { OfcSignalExchange } from '@ofc-gm/components/react'
+
+const peer = new PeerConnection()
+peer.setNetwork('lan')
+peer.setRole('offer') // 或 'answer'
+peer.createPeer()
+
+// <OfcSignalExchange peer={peer} />
+```
+
+- offer：自动生成「你的连接码」→ 复制 → 粘贴对方 → 确认  
+- answer：粘贴对方 → 确认并生成我的连接码 → 复制回去  
+
+Homepage Examples 里的 **手动信令 / STUN 探测** 也是同一套路。
+
+## 和 WS 比
+
+| | 手动 | WebSocket |
+| --- | --- | --- |
+| 要不要服务器 | 否 | 要（`@ofc-gm/ws`） |
+| 操作 | 复制粘贴两次 | 约定房间名即可 |
+| 适合 | 调试、临时两人 | 产品化、少操作 |
+
+下一步：[WebSocket 信令](/docs/connection/websocket) · [建立连接](/docs/framework/host-session)

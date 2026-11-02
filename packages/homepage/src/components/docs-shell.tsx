@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button, Text } from 'retro-react'
-import { DOC_PAGES, docsHref } from '@/lib/docs'
+import { DOC_GROUPS, docsHref } from '@/lib/docs'
 
 export function DocsShell({
   title,
@@ -19,21 +19,26 @@ export function DocsShell({
       <aside className="docs-sidebar">
         <div className="docs-sidebar-title">Docs</div>
         <nav className="docs-sidebar-nav">
-          {DOC_PAGES.map((page) => {
-            const href = docsHref(page.slug)
-            const active = pathname === href
-            return (
-              <Link key={href} href={href} className="docs-nav-link">
-                <Button
-                  type="button"
-                  variant={active ? 'primary' : 'flat'}
-                  sx={{ width: '100%', justifyContent: 'flex-start' }}
-                >
-                  {page.title}
-                </Button>
-              </Link>
-            )
-          })}
+          {DOC_GROUPS.map((group) => (
+            <div key={group.id} className="docs-nav-group">
+              <div className="docs-nav-group-title">{group.title}</div>
+              {group.pages.map((page) => {
+                const href = docsHref(page.slug)
+                const active = pathname === href
+                return (
+                  <Link key={href} href={href} className="docs-nav-link">
+                    <Button
+                      type="button"
+                      variant={active ? 'primary' : 'flat'}
+                      sx={{ width: '100%', justifyContent: 'flex-start' }}
+                    >
+                      {page.title}
+                    </Button>
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
         </nav>
       </aside>
 

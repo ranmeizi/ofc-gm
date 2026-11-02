@@ -7,7 +7,7 @@
 1. **server** — 游戏规则与状态
 2. **client** — 画面与输入
 
-连接（复制粘贴信令或 WebSocket）做好之后，再交给框架开房。
+连接做好之后，再交给框架开房。
 
 ## 从这里开始
 
@@ -15,3 +15,11 @@
 2. [写 server / client](/docs/framework/modules)
 3. [建立连接](/docs/framework/host-session)
 4. [开局](/docs/framework/start-host)
+
+## 连接方式
+
+信令怎么交换、公网打不通怎么办，见分组文档：
+
+1. [手动信令交换](/docs/connection/manual) — 复制粘贴 SDP  
+2. [WebSocket 信令](/docs/connection/websocket) — `@ofc-gm/ws` 自动转发  
+3. [TURN 中继](/docs/connection/turn) — 直连失败时用 Metered 等（非核心，按需）

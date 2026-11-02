@@ -1,0 +1,75 @@
+# WebSocket 信令
+
+双方连上同一个 **信令 WebSocket**，约定 **房间名**，由服务器 **只转发 SDP**，不再手动复制粘贴。  
+WebRTC 媒体 / 文件仍是 **P2P**（或 TURN），不经信令服务器中转内容。
+
+## 流程（两人房）
+
+1. 部署或本地启动 `@ofc-gm/ws`  
+2. 两端 `join` 同一 `roomId`（满 2 人）  
+3. **offer** 生成 SDP → `signal` → 服务器转给房内另一人  
+4. **answer** 收 offer → 生成 answer → `signal` 回传  
+5. DataChannel 打开 → 开玩 / 传文件  
+
+## 启动信令服务
+
+```bash
+# 开发
+pnpm dev:ws
+# → ws://127.0.0.1:8787/signal
+
+# 或全局安装后
+npm i -g @ofc-gm/ws
+ofc-signal-ws --port 8787 --host 0.0.0.0
+```
+
+健康检查：`GET http://127.0.0.1:8787/health`  
+公网请反代成 `wss://你的域名/signal`，并注意 Upgrade 头（nginx 需单独 `location /signal`）。
+
+PM2：见 `@ofc-gm/ws` 包内 `ecosystem.config.cjs`。
+
+## 浏览器侧要点
+
+连上 WS 后大致顺序：
+
+```ts
+// 伪代码：与 Examples 里 WsPanel / Filedrop 相同思路
+ws.send(JSON.stringify({ type: 'join', roomId: 'demo', role: 'offer' }))
+
+// offer：房间里已有人或收到 peer-joined 后
+const offer = await session.generateLocalSignal()
+ws.send(JSON.stringify({ type: 'signal', sdp: JSON.parse(offer) }))
+
+// answer：收到 type===offer 的 signal
+await session.acceptRemoteSignal(remote)
+const answer = await session.generateLocalSignal()
+ws.send(JSON.stringify({ type: 'signal', sdp: JSON.parse(answer) }))
+```
+
+库用法：
+
+```ts
+import { createSignalServer } from '@ofc-gm/ws'
+
+const server = createSignalServer({ port: 8787, maxPeersPerRoom: 2 })
+await server.listen()
+```
+
+## 协议摘要
+
+客户端 → 服务端：`join` / `signal` / `leave` / `ping`  
+服务端 → 客户端：`welcome` / `joined` / `peer-joined` / `signal` / `peer-left` / `error`
+
+两人房里 `signal` 一般不用写 `to`，会转给另一个人。
+
+## 和手动比
+
+| | WebSocket | 手动 |
+| --- | --- | --- |
+| 用户操作 | 进房即可 | 来回复制粘贴 |
+| 依赖 | 要 WSS 可达 | 无 |
+| 安全 | 房间名勿被猜中 | 码只在两人之间 |
+
+直连仍失败时配 TURN：[TURN 中继](/docs/connection/turn)。
+
+相关：[手动信令交换](/docs/connection/manual) · [建立连接](/docs/framework/host-session)

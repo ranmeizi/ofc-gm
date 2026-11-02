@@ -7,44 +7,89 @@ export type DocPage = {
   file: string
 }
 
-export const DOC_PAGES: DocPage[] = [
+export type DocGroup = {
+  id: string
+  title: string
+  pages: DocPage[]
+}
+
+/** 分组导航：核心框架 vs 连接方式（TURN 等非核心） */
+export const DOC_GROUPS: DocGroup[] = [
   {
-    slug: [],
-    title: '介绍',
-    description: 'OFC-GM 是什么',
-    file: 'index',
+    id: 'start',
+    title: '开始',
+    pages: [
+      {
+        slug: [],
+        title: '介绍',
+        description: 'OFC-GM 是什么',
+        file: 'index',
+      },
+      {
+        slug: ['getting-started'],
+        title: '安装',
+        description: '安装依赖与最小流程',
+        file: 'getting-started',
+      },
+    ],
   },
   {
-    slug: ['getting-started'],
-    title: '安装',
-    description: '安装依赖与最小流程',
-    file: 'getting-started',
+    id: 'framework',
+    title: '框架',
+    pages: [
+      {
+        slug: ['framework', 'modules'],
+        title: '写 server / client',
+        description: '游戏逻辑与表现怎么拆',
+        file: 'framework/modules',
+      },
+      {
+        slug: ['framework', 'host-session'],
+        title: '建立连接',
+        description: 'createHostSession 交换信令',
+        file: 'framework/host-session',
+      },
+      {
+        slug: ['framework', 'start-host'],
+        title: '开局',
+        description: 'startHost 挂上模块开始玩',
+        file: 'framework/start-host',
+      },
+      {
+        slug: ['framework', 'peer-connection'],
+        title: '自定义连接',
+        description: '自己使用 PeerConnection',
+        file: 'framework/peer-connection',
+      },
+    ],
   },
   {
-    slug: ['framework', 'modules'],
-    title: '写 server / client',
-    description: '游戏逻辑与表现怎么拆',
-    file: 'framework/modules',
-  },
-  {
-    slug: ['framework', 'host-session'],
-    title: '建立连接',
-    description: 'createHostSession 交换信令',
-    file: 'framework/host-session',
-  },
-  {
-    slug: ['framework', 'start-host'],
-    title: '开局',
-    description: 'startHost 挂上模块开始玩',
-    file: 'framework/start-host',
-  },
-  {
-    slug: ['framework', 'peer-connection'],
-    title: '自定义连接',
-    description: '自己使用 PeerConnection',
-    file: 'framework/peer-connection',
+    id: 'connection',
+    title: '连接方式',
+    pages: [
+      {
+        slug: ['connection', 'manual'],
+        title: '手动信令交换',
+        description: '复制粘贴 SDP / 连接码',
+        file: 'connection/manual',
+      },
+      {
+        slug: ['connection', 'websocket'],
+        title: 'WebSocket 信令',
+        description: '用 @ofc-gm/ws 自动转发 SDP',
+        file: 'connection/websocket',
+      },
+      {
+        slug: ['connection', 'turn'],
+        title: 'TURN 中继',
+        description: '公网打洞失败时用 Metered 等配置 ICE',
+        file: 'connection/turn',
+      },
+    ],
   },
 ]
+
+export const DOC_PAGES: DocPage[] = DOC_GROUPS.flatMap((g) => g.pages)
 
 export function docsHref(slug: string[]) {
   return slug.length === 0 ? '/docs' : `/docs/${slug.join('/')}`

@@ -26,6 +26,9 @@ const connection = await session.whenReady()
 | `role` | `'answer'` | 需要本机先出 SDP 时改成 `'offer'` |
 | `messageType` | `'text'` | 或 `'binary'` |
 
+信令怎么换：[手动](/docs/connection/manual) · [WebSocket](/docs/connection/websocket)。  
+直连失败再配 [TURN 中继](/docs/connection/turn)。
+
 ## 你能调用的方法
 
 | 方法 | 作用 |

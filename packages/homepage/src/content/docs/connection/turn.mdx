@@ -1,0 +1,95 @@
+# TURN 中继（Metered）
+
+> 属于 **连接方式** 补充：先选 [手动信令](/docs/connection/manual) 或 [WebSocket](/docs/connection/websocket) 交换 SDP；只有 **ICE 直连失败** 才需要本页。
+
+同一 Wi‑Fi / 家庭宽带，多数情况 **STUN 直连** 就够。  
+下面这些场景经常失败，需要 **TURN 中继**：
+
+- 公司网 ↔ 手机流量
+- 两边都是运营商 CGNAT
+- 网络禁 UDP，只放行 TCP / 443
+
+TURN 会把媒体/文件流量绕服务器转发，**占中继带宽**；演示可用第三方，正式量大请自建或买额度。
+
+## 什么时候要配
+
+| 场景 | 建议 |
+| --- | --- |
+| 办公室局域网 demo | `network: 'lan'`，不用 TURN |
+| 公网能通 STUN | `network: 'internet'`（框架默认 Google STUN） |
+| 公网直连总失败 | 加上 TURN（推荐 [Metered](https://www.metered.ca/tools/openrelay/)） |
+
+## 用 Metered 申请
+
+1. 打开 [Metered TURN 服务](https://www.metered.ca/tools/openrelay/)（或控制台创建免费应用）
+2. 拿到 **username**、**credential（password）**，以及推荐的 **TURN 域名**（如 `asia.relay.metered.ca`）
+3. 优先选用 **443 / TCP / TURNS**，公司网更容易过
+
+控制台一般会给出类似列表：
+
+```text
+stun:stun.relay.metered.ca:80
+turn:asia.relay.metered.ca:80
+turn:asia.relay.metered.ca:80?transport=tcp
+turn:asia.relay.metered.ca:443
+turns:asia.relay.metered.ca:443?transport=tcp
+```
+
+## 在框架里怎么写
+
+`network: 'internet'` 时主要挂 STUN。需要 TURN 时传入 `iceServers`：
+
+```ts
+import { PeerConnection } from '@ofc-gm/framework'
+
+const iceServers: RTCIceServer[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun.relay.metered.ca:80' },
+  {
+    urls: 'turn:asia.relay.metered.ca:80',
+    username: import.meta.env.VITE_TURN_USERNAME,
+    credential: import.meta.env.VITE_TURN_PASSWORD,
+  },
+  {
+    urls: 'turn:asia.relay.metered.ca:80?transport=tcp',
+    username: import.meta.env.VITE_TURN_USERNAME,
+    credential: import.meta.env.VITE_TURN_PASSWORD,
+  },
+  {
+    urls: 'turns:asia.relay.metered.ca:443?transport=tcp',
+    username: import.meta.env.VITE_TURN_USERNAME,
+    credential: import.meta.env.VITE_TURN_PASSWORD,
+  },
+]
+
+const peer = new PeerConnection({ iceServers })
+peer.setNetwork('internet')
+peer.setRole('answer')
+peer.createPeer()
+```
+
+```bash
+VITE_TURN_USERNAME=你的 Metered username
+VITE_TURN_PASSWORD=你的 Metered credential
+VITE_TURN_HOST=asia.relay.metered.ca
+```
+
+> `VITE_*` 会打进前端包，只适合 demo；生产考虑短期凭证或自建 coturn。
+
+## Filedrop 示例
+
+```bash
+cd examples/filedrop
+cp .env.example .env
+# 填入 VITE_TURN_USERNAME / VITE_TURN_PASSWORD
+pnpm --filter @ofc-gm/example-filedrop dev
+```
+
+## 排查
+
+1. 信令先通（手动或 WSS），再谈打洞  
+2. 看 ICE 有没有 `relay` 候选  
+3. 公司网优先 `turns:…:443?transport=tcp`  
+4. 仍失败：同一 Wi‑Fi 验证，或自建 coturn  
+
+相关：[手动信令](/docs/connection/manual) · [WebSocket](/docs/connection/websocket)
