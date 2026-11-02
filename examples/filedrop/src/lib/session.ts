@@ -1,3 +1,4 @@
+import { resolveIceServers } from './ice'
 import type { FileMeta, LocalFile, Role } from './types'
 import { uid } from './utils'
 
@@ -12,9 +13,16 @@ type ServerMessage =
     }
   | { type: 'peer-joined'; peerId: string; role?: Role }
   | { type: 'peer-left'; peerId: string }
-  | { type: 'signal'; from: string; sdp: { type: string; sdp: string } | string }
+  | { type: 'signal'; from: string; sdp: unknown }
   | { type: 'error'; message: string }
   | { type: 'pong' }
+
+type SignalPayload =
+  | { type: 'offer' | 'answer'; sdp: string }
+  | {
+      type: 'candidate'
+      candidate: RTCIceCandidateInit | null
+    }
 
 export type SessionHandlers = {
   onStatus: (text: string, kind?: 'info' | 'ok' | 'warn' | 'err') => void
@@ -34,6 +42,8 @@ export class FiledropSession {
   private roomId = ''
   private offerSent = false
   private answerSent = false
+  private remoteDescSet = false
+  private pendingCandidates: RTCIceCandidateInit[] = []
   private mine = new Map<string, LocalFile>()
   private incoming = new Map<
     string,
@@ -63,14 +73,45 @@ export class FiledropSession {
     this.roomId = roomId
     this.offerSent = false
     this.answerSent = false
+    this.remoteDescSet = false
+    this.pendingCandidates = []
     this.handlers.onStatus(role === 'answer' ? '生成中…' : '输入中…', 'warn')
 
     this.pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-      ],
+      iceServers: resolveIceServers(),
+      iceCandidatePoolSize: 4,
     })
+
+    this.pc.onicecandidate = (ev) => {
+      // trickle：边收集边通过信令转发
+      this.wsSend({
+        type: 'signal',
+        sdp: {
+          type: 'candidate',
+          candidate: ev.candidate ? ev.candidate.toJSON() : null,
+        } satisfies SignalPayload,
+      })
+    }
+
+    this.pc.oniceconnectionstatechange = () => {
+      const s = this.pc?.iceConnectionState
+      if (s === 'checking') this.handlers.onStatus('打洞中…', 'warn')
+      if (s === 'connected' || s === 'completed') {
+        // DataChannel onopen 会再提示
+      }
+      if (s === 'failed') {
+        this.handlers.onStatus('打洞失败，换个网络或稍后重试', 'err')
+      }
+      if (s === 'disconnected') {
+        this.handlers.onStatus('连接不稳…', 'warn')
+      }
+    }
+
+    this.pc.onconnectionstatechange = () => {
+      if (this.pc?.connectionState === 'failed') {
+        this.handlers.onStatus('打洞失败，换个网络或稍后重试', 'err')
+      }
+    }
 
     if (role === 'offer') {
       this.bindChannel(this.pc.createDataChannel('filedrop'))
@@ -161,6 +202,8 @@ export class FiledropSession {
     this.pc = null
     this.channel = null
     this.role = null
+    this.remoteDescSet = false
+    this.pendingCandidates = []
     if (resetRoom) this.roomId = ''
     this.handlers.onPeerList([])
   }
@@ -202,20 +245,29 @@ export class FiledropSession {
     channel.onmessage = (ev) => this.onChannelMessage(String(ev.data))
   }
 
-  private async waitIce(pc: RTCPeerConnection) {
-    if (pc.iceGatheringState === 'complete') return
-    await Promise.race([
-      new Promise<void>((resolve) => {
-        const check = () => {
-          if (pc.iceGatheringState === 'complete') {
-            pc.removeEventListener('icegatheringstatechange', check)
-            resolve()
-          }
-        }
-        pc.addEventListener('icegatheringstatechange', check)
-      }),
-      new Promise<void>((r) => setTimeout(r, 3000)),
-    ])
+  private async flushCandidates() {
+    if (!this.pc) return
+    const list = this.pendingCandidates.splice(0)
+    for (const c of list) {
+      try {
+        await this.pc.addIceCandidate(c)
+      } catch {
+        // ignore bad/stale
+      }
+    }
+  }
+
+  private async addRemoteCandidate(init: RTCIceCandidateInit | null) {
+    if (!init) return // end-of-candidates
+    if (!this.pc || !this.remoteDescSet) {
+      this.pendingCandidates.push(init)
+      return
+    }
+    try {
+      await this.pc.addIceCandidate(init)
+    } catch {
+      //
+    }
   }
 
   private async sendOffer() {
@@ -224,7 +276,7 @@ export class FiledropSession {
     try {
       const offer = await this.pc.createOffer()
       await this.pc.setLocalDescription(offer)
-      await this.waitIce(this.pc)
+      // trickle：立刻发 offer，不等 ICE 收齐
       this.wsSend({
         type: 'signal',
         sdp: {
@@ -232,30 +284,36 @@ export class FiledropSession {
           sdp: this.pc.localDescription!.sdp,
         },
       })
-      this.handlers.onStatus('连接中…', 'warn')
+      this.handlers.onStatus('打洞中…', 'warn')
     } catch {
       this.offerSent = false
       this.handlers.onStatus('连不上，稍后再试', 'err')
     }
   }
 
-  private async handleSignal(sdp: { type: string; sdp: string } | string) {
+  private async handleSignal(raw: unknown) {
     if (!this.pc || !this.role) return
     const parsed =
-      typeof sdp === 'string'
-        ? (JSON.parse(sdp) as { type: string; sdp: string })
-        : sdp
+      typeof raw === 'string' ? (JSON.parse(raw) as SignalPayload) : (raw as SignalPayload)
+
+    if (parsed.type === 'candidate') {
+      await this.addRemoteCandidate(parsed.candidate)
+      return
+    }
+
     const init: RTCSessionDescriptionInit = {
-      type: parsed.type as RTCSdpType,
+      type: parsed.type,
       sdp: parsed.sdp,
     }
+
     if (this.role === 'answer' && init.type === 'offer') {
       if (this.answerSent) return
       this.answerSent = true
       await this.pc.setRemoteDescription(init)
+      this.remoteDescSet = true
+      await this.flushCandidates()
       const answer = await this.pc.createAnswer()
       await this.pc.setLocalDescription(answer)
-      await this.waitIce(this.pc)
       this.wsSend({
         type: 'signal',
         sdp: {
@@ -263,10 +321,12 @@ export class FiledropSession {
           sdp: this.pc.localDescription!.sdp,
         },
       })
-      this.handlers.onStatus('连接中…', 'warn')
+      this.handlers.onStatus('打洞中…', 'warn')
     } else if (this.role === 'offer' && init.type === 'answer') {
       await this.pc.setRemoteDescription(init)
-      this.handlers.onStatus('连接中…', 'warn')
+      this.remoteDescSet = true
+      await this.flushCandidates()
+      this.handlers.onStatus('打洞中…', 'warn')
     }
   }
 
