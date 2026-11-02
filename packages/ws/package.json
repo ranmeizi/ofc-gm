@@ -16,26 +16,51 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "ecosystem.config.cjs",
+    "README.md"
   ],
   "bin": {
-    "ofc-signal-ws": "./dist/cli.js"
+    "ofc-signal-ws": "./dist/cli.js",
+    "ofc-gm-ws": "./dist/cli.js"
   },
   "scripts": {
     "dev": "tsx watch src/cli.ts",
     "start": "node dist/cli.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop ofc-signal-ws",
+    "pm2:logs": "pm2 logs ofc-signal-ws"
   },
   "keywords": [
     "websocket",
     "webrtc",
     "signaling",
+    "sdp",
+    "pm2",
     "ofc-gm"
   ],
-  "author": "",
+  "author": "ranmeizi",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ranmeizi/ofc-gm.git",
+    "directory": "packages/ws"
+  },
+  "homepage": "https://github.com/ranmeizi/ofc-gm/tree/main/packages/ws",
+  "bugs": {
+    "url": "https://github.com/ranmeizi/ofc-gm/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "packageManager": "pnpm@10.27.0",
   "dependencies": {
     "ws": "^8.18.0"
