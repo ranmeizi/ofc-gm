@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MAME 模拟器 / KOF ROM：本地 copy:mame，勿提交
+/public/examples/mame-kof/MAME.min.js
+/public/examples/mame-kof/kof97.zip
+

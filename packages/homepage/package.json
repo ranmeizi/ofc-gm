@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "build:pages": "GITHUB_PAGES=1 next build",
+    "copy:mame": "node ./scripts/copy-mame.mjs",
     "start": "next start",
     "lint": "eslint"
   },

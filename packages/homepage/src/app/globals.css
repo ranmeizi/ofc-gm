@@ -68,6 +68,14 @@ a {
   width: auto !important;
 }
 
+.desktop-bar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .desktop-brand {
   padding: 0 8px;
   font-size: 14px;

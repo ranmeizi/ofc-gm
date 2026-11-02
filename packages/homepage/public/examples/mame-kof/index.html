@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OFC × MAME KOF97</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        color: #ffffe0;
+        font: 13px Tahoma, sans-serif;
+        overflow: hidden;
+      }
+      #game {
+        width: 100%;
+        height: 100%;
+        background: #000;
+      }
+      #game canvas {
+        display: block;
+        margin: 0 auto;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
+      #guest-view {
+        display: none;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #000;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+      #panel {
+        position: fixed;
+        left: 8px;
+        bottom: 8px;
+        right: 8px;
+        z-index: 20;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        text-shadow: 1px 1px 0 #000;
+      }
+      #panel button {
+        font: 12px Tahoma, sans-serif;
+        padding: 4px 8px;
+        background: #c0c0c0;
+        border: 2px solid;
+        border-color: #fff #808080 #808080 #fff;
+        color: #000;
+        cursor: pointer;
+      }
+      #status {
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <img id="guest-view" alt="remote frame" />
+    <div id="panel">
+      <span id="status">init…</span>
+      <button type="button" id="coin" hidden>投币 (1)</button>
+      <button type="button" id="p1start" hidden>1P Start</button>
+    </div>
+
+    <script src="./MAME.min.js"></script>
+    <script>
+      ;(function () {
+        var ROM_URL = './kof97.zip'
+        var ROM_NAME = 'kof97.zip'
+
+        var params = new URLSearchParams(location.search)
+        var isHost = params.get('role') === 'host'
+        var statusEl = document.getElementById('status')
+        var gameEl = document.getElementById('game')
+        var guestView = document.getElementById('guest-view')
+        var coinBtn = document.getElementById('coin')
+        var startBtn = document.getElementById('p1start')
+
+        // 两端客户端同一套键位：WASD · J/K/U/I · Enter Start · 1 投币
+        var CLIENT_KEYS = {
+          up: 'KeyW',
+          down: 'KeyS',
+          left: 'KeyA',
+          right: 'KeyD',
+          start: 'Enter',
+          coin: 'Digit1',
+          button1: 'KeyJ',
+          button2: 'KeyK',
+          button3: 'KeyU',
+          button4: 'KeyI',
+          button5: 'KeyO',
+          button6: 'KeyL',
+        }
+        // Host 模拟器内部 2P 键码（须与 CLIENT_KEYS 无交集）
+        // 注意：本核心 coin 实际写的是 port0 的 JSEL，2P 投币也走同一加币口
+        var P2 = {
+          up: 'ArrowUp',
+          down: 'ArrowDown',
+          left: 'ArrowLeft',
+          right: 'ArrowRight',
+          start: 'Slash',
+          button1: 'KeyZ',
+          button2: 'KeyX',
+          button3: 'KeyC',
+          button4: 'KeyV',
+          button5: 'KeyB',
+          button6: 'KeyN',
+        }
+
+        var ABSTRACT_FROM_CODE = {}
+        Object.keys(CLIENT_KEYS).forEach(function (action) {
+          ABSTRACT_FROM_CODE[CLIENT_KEYS[action]] = action
+        })
+
+        function setStatus(t) {
+          statusEl.textContent = t
+        }
+
+        // 优先写 MAME_INPUTSTATE（与官方虚拟摇杆同路径）；未启动时回退 KeyboardEvent
+        function injectKey(code, down) {
+          var keymap = window.MAME_KEYMAP
+          var state = window.MAME_INPUTSTATE
+          if (keymap && state && keymap[code]) {
+            var m = keymap[code]
+            state[m.port][m.btn] = down ? 1 : 0
+            return
+          }
+          var type = down ? 'keydown' : 'keyup'
+          document.dispatchEvent(
+            new KeyboardEvent(type, {
+              code: code,
+              key: code,
+              bubbles: true,
+              cancelable: true,
+            }),
+          )
+        }
+
+        function injectPad(port, btnConst, down) {
+          var state = window.MAME_INPUTSTATE
+          var btn = window[btnConst]
+          if (!state || btn === undefined) return false
+          state[port][btn] = down ? 1 : 0
+          return true
+        }
+
+        /** Guest 抽象动作 → Host 机内 2P / 投币 */
+        function injectP2Action(action, down) {
+          if (action === 'coin') {
+            // lrusso 把 coin 绑在 1P port 的 JSEL；对战加币共用这一口
+            if (!injectPad(0, 'MAME_JSEL', down)) injectKey(CLIENT_KEYS.coin, down)
+            return
+          }
+          if (action === 'start') {
+            if (!injectPad(1, 'MAME_JSTART', down)) injectKey(P2.start, down)
+            return
+          }
+          if (P2[action]) injectKey(P2[action], down)
+        }
+
+        function postToParent(msg) {
+          try {
+            window.parent.postMessage(msg, '*')
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        function pulseAction(action, local) {
+          var hold = action === 'coin' || action === 'start' ? 120 : 80
+          if (local) {
+            if (action === 'coin') {
+              injectPad(0, 'MAME_JSEL', true) || injectKey(CLIENT_KEYS.coin, true)
+              setTimeout(function () {
+                injectPad(0, 'MAME_JSEL', false) || injectKey(CLIENT_KEYS.coin, false)
+              }, hold)
+              return
+            }
+            injectKey(CLIENT_KEYS[action] || action, true)
+            setTimeout(function () {
+              injectKey(CLIENT_KEYS[action] || action, false)
+            }, hold)
+          } else {
+            postToParent({ type: 'ofc-p2-key', action: action, down: true })
+            setTimeout(function () {
+              postToParent({ type: 'ofc-p2-key', action: action, down: false })
+            }, hold)
+          }
+        }
+
+        // —— Guest：显示远端帧 + 上报本地键为 2P ——
+        if (!isHost) {
+          guestView.style.display = 'block'
+          guestView.tabIndex = 0
+          gameEl.style.display = 'none'
+          coinBtn.hidden = false
+          startBtn.hidden = false
+          coinBtn.textContent = '投币 (1)'
+          startBtn.textContent = '2P Start'
+          setStatus('Guest(2P) · 等待 Host 画面 · 点画面聚焦')
+          guestView.addEventListener('click', function () {
+            guestView.focus()
+          })
+          coinBtn.addEventListener('click', function () {
+            pulseAction('coin', false)
+          })
+          startBtn.addEventListener('click', function () {
+            pulseAction('start', false)
+          })
+
+          var pressed = {}
+          window.addEventListener('keydown', function (e) {
+            var abs = ABSTRACT_FROM_CODE[e.code]
+            if (!abs || pressed[abs]) return
+            pressed[abs] = true
+            e.preventDefault()
+            postToParent({ type: 'ofc-p2-key', action: abs, down: true })
+          })
+          window.addEventListener('keyup', function (e) {
+            var abs = ABSTRACT_FROM_CODE[e.code]
+            if (!abs || !pressed[abs]) return
+            delete pressed[abs]
+            postToParent({ type: 'ofc-p2-key', action: abs, down: false })
+          })
+
+          window.addEventListener('message', function (ev) {
+            var msg = ev.data
+            if (!msg || typeof msg !== 'object') return
+            if (msg.type === 'ofc-frame' && typeof msg.jpeg === 'string') {
+              guestView.src = 'data:image/jpeg;base64,' + msg.jpeg
+              setStatus('Guest(2P) · 收流中')
+            }
+          })
+
+          postToParent({ type: 'ofc-ready', role: 'guest' })
+          return
+        }
+
+        // —— Host：自动加载 kof97，1P 本地，注入 2P，推送画面 ——
+        coinBtn.hidden = false
+        startBtn.hidden = false
+
+        coinBtn.addEventListener('click', function () {
+          pulseAction('coin', true)
+        })
+        startBtn.addEventListener('click', function () {
+          pulseAction('start', true)
+        })
+
+        var frameRaf = 0
+        // 像素游戏：原分辨率 + 高质 JPEG，Guest CSS 最近邻放大更清晰，也更省带宽
+        var TARGET_FPS = 60
+        var JPEG_QUALITY = 0.95
+        var FRAME_MS = 1000 / TARGET_FPS
+        var dropUntil = 0 // 父页背压：缓冲过大时暂时停推帧
+
+        function findCanvas() {
+          return gameEl.querySelector('canvas')
+        }
+
+        var pumpCanvas = document.createElement('canvas')
+        var pumpCtx = pumpCanvas.getContext('2d', { alpha: false })
+
+        /** 失焦时 MAME 会自己 pause；对战 Host 必须一直跑 */
+        function forceUnpause() {
+          if (!window.MAME_RUNNING || !window.MAME_GAMELOADED) return
+          if (window.MAME_PAUSED) {
+            window.MAME_PAUSED = false
+            window.MAME_LAST_FRAME_TIME = 0
+            window.MAME_FRAME_ACCUM = 0
+          }
+          try {
+            if (window.MAME_AUDIOCTX && window.MAME_AUDIOCTX.state === 'suspended') {
+              window.MAME_AUDIOCTX.resume()
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        function installNoPause() {
+          window.addEventListener(
+            'blur',
+            function () {
+              setTimeout(forceUnpause, 0)
+            },
+            true,
+          )
+          // 兜底：有人点了父页面导致 iframe blur
+          setInterval(forceUnpause, 250)
+        }
+
+        function startFramePump() {
+          if (frameRaf) return
+          var lastSent = 0
+          function tick(now) {
+            frameRaf = requestAnimationFrame(tick)
+            forceUnpause()
+            if (now < dropUntil) return
+            if (now - lastSent < FRAME_MS) return
+            lastSent = now
+            var canvas = findCanvas()
+            if (!canvas || !canvas.width || !pumpCtx) return
+            try {
+              var tw = canvas.width
+              var th = canvas.height
+              if (pumpCanvas.width !== tw || pumpCanvas.height !== th) {
+                pumpCanvas.width = tw
+                pumpCanvas.height = th
+                pumpCtx.imageSmoothingEnabled = false
+              }
+              pumpCtx.drawImage(canvas, 0, 0)
+              var dataUrl = pumpCanvas.toDataURL('image/jpeg', JPEG_QUALITY)
+              var jpeg = dataUrl.split(',')[1] || ''
+              if (!jpeg) return
+              postToParent({
+                type: 'ofc-frame',
+                jpeg: jpeg,
+                w: tw,
+                h: th,
+                t: Date.now(),
+              })
+            } catch (err) {
+              // tainted / not ready
+            }
+          }
+          frameRaf = requestAnimationFrame(tick)
+        }
+
+        window.addEventListener('message', function (ev) {
+          var msg = ev.data
+          if (!msg || typeof msg !== 'object') return
+          if (msg.type === 'ofc-throttle') {
+            dropUntil = performance.now() + (msg.ms || 100)
+            return
+          }
+          if (msg.type === 'ofc-p2-key' && msg.action) {
+            forceUnpause()
+            injectP2Action(msg.action, !!msg.down)
+          }
+        })
+
+        function bootRom(buffer) {
+          if (typeof embedMAME !== 'function') {
+            setStatus('MAME.min.js 未加载')
+            return
+          }
+          // embedMAME 的 player* 只允许方向/start/button；coin 走独立参数
+          var p1 = {
+            up: CLIENT_KEYS.up,
+            down: CLIENT_KEYS.down,
+            left: CLIENT_KEYS.left,
+            right: CLIENT_KEYS.right,
+            start: CLIENT_KEYS.start,
+            button1: CLIENT_KEYS.button1,
+            button2: CLIENT_KEYS.button2,
+            button3: CLIENT_KEYS.button3,
+            button4: CLIENT_KEYS.button4,
+            button5: CLIENT_KEYS.button5,
+            button6: CLIENT_KEYS.button6,
+          }
+          try {
+            embedMAME({
+              container: 'game',
+              name: ROM_NAME,
+              rom: buffer,
+              soundEnabled: true,
+              showMobileControls: false,
+              coin: CLIENT_KEYS.coin,
+              player1: p1,
+              player2: P2,
+              cbStarted: function () {
+                installNoPause()
+                forceUnpause()
+                setStatus('Host(1P) · KOF97 运行中 · 推流 ' + TARGET_FPS + 'fps q' + JPEG_QUALITY)
+                startFramePump()
+                postToParent({ type: 'ofc-ready', role: 'host' })
+              },
+            })
+          } catch (err) {
+            setStatus('启动失败: ' + (err && err.message ? err.message : String(err)))
+          }
+        }
+
+        setStatus('Host(1P) · 加载 KOF97…')
+        postToParent({ type: 'ofc-ready', role: 'host', waitingRom: true })
+
+        var xhr = new XMLHttpRequest()
+        xhr.open('GET', ROM_URL, true)
+        xhr.responseType = 'arraybuffer'
+        xhr.addEventListener('progress', function (e) {
+          if (!e.lengthComputable) return
+          var pct = Math.round((e.loaded / e.total) * 100)
+          setStatus('Host(1P) · 加载 KOF97… ' + pct + '%')
+        })
+        xhr.addEventListener('load', function () {
+          if (xhr.status !== 200 && xhr.status !== 0) {
+            setStatus('ROM 加载失败 HTTP ' + xhr.status + ' · 先跑 pnpm --filter homepage copy:mame')
+            return
+          }
+          setStatus('Host(1P) · 启动模拟器…')
+          bootRom(xhr.response)
+        })
+        xhr.addEventListener('error', function () {
+          setStatus('ROM 拉取失败 · 先跑 pnpm --filter homepage copy:mame')
+        })
+        xhr.send(null)
+      })()
+    </script>
+  </body>
+</html>

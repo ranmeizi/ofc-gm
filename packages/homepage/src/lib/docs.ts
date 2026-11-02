@@ -80,7 +80,7 @@ export const EXAMPLE_PAGES: ExamplePage[] = [
   {
     slug: 'desk-kof',
     title: 'Desk KOF',
-    description: 'Fork Magicherry KOF + 自绘角色 + OFC 按键同步',
+    description: 'MAME(JS) Host=1P 自动跑 KOF97 推流 · Guest=2P 按键',
   },
 ]
 

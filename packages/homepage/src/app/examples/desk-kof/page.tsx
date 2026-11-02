@@ -7,13 +7,20 @@ import { ExampleShell } from '../example-shell'
 import { useDemoSession } from '@/hooks/use-demo-session'
 import { METHOD_LABELS } from '@/lib/demo-session'
 
-/** 1280×720 画面，按窗口宽度 letterbox */
-const FRAME_W = 920
-const FRAME_H = Math.round((FRAME_W * 9) / 16) // 518
+const FRAME_W = 960
+const FRAME_H = 540
+/** DataChannel 缓冲超过此值就丢帧，避免按键被大图堵住 */
+const FRAME_BUFFER_LIMIT = 512 * 1024
+
+function dataChannelBuffered(connection: {
+  peerConnection?: { channel?: RTCDataChannel }
+}): number {
+  return connection.peerConnection?.channel?.bufferedAmount ?? 0
+}
 
 /**
- * Fork: Magicherry/King-of-Fighters (MIT)
- * 静态页在 /examples/kof/；本页只做 OFC Connection ↔ iframe 按键桥。
+ * Host(answer)=MAME 1P + 推画面；Guest(offer)=收画面 + 发 2P 键。
+ * 模拟器：lrusso/MAME；Host 自动加载 kof97.zip（copy:mame 合并 neogeo BIOS）。
  */
 export default function DeskKofPage() {
   const session = useDemoSession()
@@ -26,7 +33,7 @@ export default function DeskKofPage() {
   const base = process.env.NEXT_PUBLIC_BASE_PATH || ''
   const src = useMemo(() => {
     const role = isHost ? 'host' : 'guest'
-    return `${base}/examples/kof/index.html?role=${role}&skin0=clerk&skin1=manager`
+    return `${base}/examples/mame-kof/index.html?role=${role}`
   }, [base, isHost])
 
   useEffect(() => {
@@ -37,40 +44,86 @@ export default function DeskKofPage() {
 
     const connection = session.connection
 
-    function onMessage(raw: unknown) {
-      let msg: { event?: string; data?: unknown }
+    function onPeerMessage(raw: unknown) {
+      let msg: { type?: string; action?: string; down?: boolean; jpeg?: string }
       try {
         msg = typeof raw === 'string' ? (JSON.parse(raw) as typeof msg) : (raw as typeof msg)
       } catch {
         return
       }
-      if (msg.event !== 'keys' || !Array.isArray(msg.data)) return
-      iframeRef.current?.contentWindow?.postMessage(
-        { type: 'ofc-remote-keys', keys: msg.data },
-        '*',
-      )
+      const win = iframeRef.current?.contentWindow
+      if (!win) return
+
+      // Guest→Host：2P 按键（优先投递）
+      if (msg.type === 'p2-key' && isHost) {
+        win.postMessage(
+          { type: 'ofc-p2-key', action: msg.action, down: !!msg.down },
+          '*',
+        )
+        return
+      }
+      // Host→Guest：画面帧
+      if (msg.type === 'frame' && typeof msg.jpeg === 'string' && !isHost) {
+        win.postMessage({ type: 'ofc-frame', jpeg: msg.jpeg }, '*')
+      }
     }
 
     function onWindowMessage(ev: MessageEvent) {
       const msg = ev.data
       if (!msg || typeof msg !== 'object') return
+
       if (msg.type === 'ofc-ready') {
         setReady(true)
-        setStatus('引擎就绪，同步按键中')
+        setStatus(
+          msg.role === 'host'
+            ? msg.waitingRom
+              ? 'Host 就绪 · 加载 KOF97…'
+              : 'Host · KOF97 运行中（失焦不暂停）'
+            : 'Guest 就绪 · 等待画面',
+        )
         return
       }
-      if (msg.type === 'ofc-local-keys' && Array.isArray(msg.keys)) {
-        if (!connection.connected) return
-        connection.send(JSON.stringify({ event: 'keys', data: msg.keys }))
+
+      if (!connection.connected) return
+
+      // iframe → OFC
+      if (msg.type === 'ofc-p2-key' && !isHost) {
+        connection.send(
+          JSON.stringify({
+            type: 'p2-key',
+            action: msg.action,
+            down: !!msg.down,
+          }),
+        )
+        return
+      }
+      if (msg.type === 'ofc-frame' && isHost && typeof msg.jpeg === 'string') {
+        const buffered = dataChannelBuffered(
+          connection as unknown as { peerConnection?: { channel?: RTCDataChannel } },
+        )
+        if (buffered > FRAME_BUFFER_LIMIT) {
+          iframeRef.current?.contentWindow?.postMessage(
+            { type: 'ofc-throttle', ms: 80 },
+            '*',
+          )
+          return
+        }
+        connection.send(
+          JSON.stringify({
+            type: 'frame',
+            jpeg: msg.jpeg,
+            t: msg.t,
+          }),
+        )
       }
     }
 
-    connection.on('message', onMessage)
+    connection.on('message', onPeerMessage)
     window.addEventListener('message', onWindowMessage)
-    setStatus(isHost ? 'Host · 等待 iframe' : 'Guest · 等待 iframe')
+    setStatus(isHost ? 'Host(1P) · 挂载模拟器' : 'Guest(2P) · 挂载接收端')
 
     return () => {
-      connection.off('message', onMessage)
+      connection.off('message', onPeerMessage)
       window.removeEventListener('message', onWindowMessage)
       setReady(false)
     }
@@ -78,10 +131,11 @@ export default function DeskKofPage() {
 
   if (!connected) {
     return (
-      <ExampleShell title="desk-kof.exe" width={520} height={220}>
-        <Text variant="paragraph">对战要先连上 Peer。</Text>
+      <ExampleShell title="desk-kof.exe" width={520} height={240}>
+        <Text variant="paragraph">先 CONNECT，再进拳皇 demo。</Text>
         <Text variant="small" color="#808080">
-          Fork 自 Magicherry/King-of-Fighters（MIT）。两边都用 WASD/J/K，经 OFC 同步。
+          Host(answer)=1P 自动加载 KOF97 并推流；Guest(offer)=2P 发键、收画面。需先
+          `pnpm --filter homepage copy:mame`。
         </Text>
         <div style={{ marginTop: 12 }}>
           <Link href="/examples">
@@ -95,11 +149,11 @@ export default function DeskKofPage() {
   }
 
   return (
-    <ExampleShell title="desk-kof.exe" width={FRAME_W + 40} height={FRAME_H + 100}>
+    <ExampleShell title="desk-kof.exe" width={FRAME_W + 40} height={FRAME_H + 110}>
       <div style={{ display: 'grid', gap: 8 }}>
         <Text variant="small">
-          {isHost ? 'Host' : 'Guest'} · {session.method ? METHOD_LABELS[session.method] : '—'} ·{' '}
-          {status}
+          {isHost ? 'Host · 1P' : 'Guest · 2P'} ·{' '}
+          {session.method ? METHOD_LABELS[session.method] : '—'} · {status}
           {ready ? ' · bridge ok' : ''}
         </Text>
         <div
@@ -115,16 +169,18 @@ export default function DeskKofPage() {
         >
           <iframe
             ref={iframeRef}
-            title="kof-fork"
+            title="mame-kof"
             src={src}
             width={FRAME_W}
             height={FRAME_H}
             style={{ width: FRAME_W, height: FRAME_H, border: 0, display: 'block' }}
-            allow="gamepad"
+            allow="autoplay; gamepad"
           />
         </div>
         <Text variant="small" color="#808080">
-          Fork Magicherry/King-of-Fighters · OfficeFighter · ofc-bridge
+          {isHost
+            ? 'WASD · J/K/U/I · Enter Start · 1 投币 · 失焦也会继续跑（给 2P 留输入）'
+            : '同一套键：WASD · J/K/U/I · Enter Start · 1 投币 · 先点画面聚焦'}
         </Text>
       </div>
     </ExampleShell>

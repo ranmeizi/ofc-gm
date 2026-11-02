@@ -24,7 +24,6 @@ export function ConnectStatus() {
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        marginLeft: 'auto',
         flexShrink: 0,
         padding: '2px 6px',
         background: '#c0c0c0',
