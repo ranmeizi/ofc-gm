@@ -16,4 +16,16 @@ export function fmtSize(n: number): string {
 }
 
 export const STORAGE_WS = 'ofc-filedrop-ws'
-export const DEFAULT_WS = 'ws://127.0.0.1:8787/signal'
+
+/** 默认同域信令：https 页用 wss，开发用本机 8787 */
+export function defaultWsUrl() {
+  const { protocol, hostname, host } = window.location
+  const secured = protocol === 'https:'
+  // 生产若反代了 /signal，优先同 host；本地 Vite 开发仍打 8787
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${secured ? 'wss' : 'ws'}://${hostname}:8787/signal`
+  }
+  return `${secured ? 'wss' : 'ws'}://${host}/signal`
+}
+
+export const DEFAULT_WS = defaultWsUrl()
