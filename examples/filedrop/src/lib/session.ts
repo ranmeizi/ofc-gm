@@ -1,5 +1,5 @@
 import { resolveIceServers } from './ice'
-import type { FileMeta, LocalFile, Role } from './types'
+import type { FileMeta, IcePathInfo, IcePathKind, LocalFile, Role } from './types'
 import { uid } from './utils'
 
 type ServerMessage =
@@ -30,6 +30,22 @@ export type SessionHandlers = {
   onChannelClose: () => void
   onPeerList: (files: FileMeta[]) => void
   onProgress?: (text: string) => void
+  onIcePath?: (info: IcePathInfo) => void
+}
+
+function labelForIce(kind: IcePathKind): string {
+  switch (kind) {
+    case 'host':
+      return '直连 · host'
+    case 'srflx':
+      return 'STUN 打洞'
+    case 'prflx':
+      return 'STUN 打洞 · prflx'
+    case 'relay':
+      return 'TURN 中继'
+    default:
+      return '未知路径'
+  }
 }
 
 const CHUNK = 64 * 1024
@@ -164,6 +180,84 @@ export class FiledropSession {
     return this.getMine()
   }
 
+  clearMine() {
+    this.mine.clear()
+    this.sendList()
+    return this.getMine()
+  }
+
+  /** 读当前选用的 ICE 候选：host / srflx(STUN) / relay(TURN) */
+  async detectIcePath(): Promise<IcePathInfo | null> {
+    if (!this.pc) return null
+    const stats = await this.pc.getStats()
+    let pair: RTCStats | undefined
+
+    stats.forEach((r) => {
+      if (r.type === 'transport') {
+        const id = (r as RTCStats & { selectedCandidatePairId?: string })
+          .selectedCandidatePairId
+        if (id) pair = stats.get(id)
+      }
+    })
+    if (!pair) {
+      stats.forEach((r) => {
+        const p = r as RTCStats & { selected?: boolean; state?: string }
+        if (
+          r.type === 'candidate-pair' &&
+          (p.selected === true || p.state === 'succeeded')
+        ) {
+          pair = r
+        }
+      })
+    }
+    if (!pair) {
+      return {
+        kind: 'unknown',
+        label: labelForIce('unknown'),
+        localType: '-',
+        remoteType: '-',
+      }
+    }
+
+    const p = pair as RTCStats & {
+      localCandidateId?: string
+      remoteCandidateId?: string
+    }
+    const local = p.localCandidateId
+      ? (stats.get(p.localCandidateId) as
+          | (RTCStats & { candidateType?: string })
+          | undefined)
+      : undefined
+    const remote = p.remoteCandidateId
+      ? (stats.get(p.remoteCandidateId) as
+          | (RTCStats & { candidateType?: string })
+          | undefined)
+      : undefined
+
+    const localType = local?.candidateType ?? 'unknown'
+    const remoteType = remote?.candidateType ?? 'unknown'
+    // 任一侧是 relay 即走了 TURN
+    const kind: IcePathKind =
+      localType === 'relay' || remoteType === 'relay'
+        ? 'relay'
+        : localType === 'srflx' || remoteType === 'srflx'
+          ? 'srflx'
+          : localType === 'prflx' || remoteType === 'prflx'
+            ? 'prflx'
+            : localType === 'host' && remoteType === 'host'
+              ? 'host'
+              : (localType as IcePathKind) || 'unknown'
+
+    return {
+      kind: ['host', 'srflx', 'prflx', 'relay'].includes(kind) ? kind : 'unknown',
+      label: labelForIce(
+        ['host', 'srflx', 'prflx', 'relay'].includes(kind) ? kind : 'unknown',
+      ),
+      localType,
+      remoteType,
+    }
+  }
+
   requestDownload(meta: FileMeta) {
     if (!this.isChannelOpen()) {
       this.handlers.onStatus('还没连上', 'err')
@@ -236,6 +330,15 @@ export class FiledropSession {
       this.handlers.onStatus('可以传文件了', 'ok')
       this.handlers.onChannelOpen()
       this.sendList()
+      void this.detectIcePath().then((info) => {
+        if (info) this.handlers.onIcePath?.(info)
+      })
+      // ICE 有时稍后才稳定，再探一次
+      setTimeout(() => {
+        void this.detectIcePath().then((info) => {
+          if (info) this.handlers.onIcePath?.(info)
+        })
+      }, 1200)
     }
     channel.onclose = () => {
       this.handlers.onStatus('断开了', 'warn')
