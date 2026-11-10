@@ -510,18 +510,67 @@ a {
   }
 }
 
-/* MDX 正文保证可读；代码块样式以 mdx-components 为准 */
+/* MDX 正文；代码块用 highlight.js 主题，不跟 Win95 黄底 */
 .mdx-body {
   color: #000;
 }
 
-.mdx-body pre,
-.mdx-body pre code {
-  color: #000 !important;
-  background: #ffffe0 !important;
+.mdx-inline-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  color: #111827;
 }
 
-.mdx-body pre code {
-  border: none !important;
+.mdx-codeblock {
+  --mdx-code-bg: #282c34;
+  position: relative;
+  margin: 0 0 1.1rem;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--mdx-code-bg);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.08),
+    0 10px 28px rgba(15, 23, 42, 0.12);
+}
+
+.mdx-codeblock-lang {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(229, 231, 235, 0.55);
+  user-select: none;
+  pointer-events: none;
+}
+
+.mdx-body .mdx-codeblock pre {
+  margin: 0;
+  padding: 1rem 1.05rem 1.05rem;
+  overflow: auto;
+  background: transparent !important;
+  border: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.mdx-body .mdx-codeblock pre code,
+.mdx-body .mdx-codeblock pre code.hljs {
+  display: block;
   padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: inherit;
 }

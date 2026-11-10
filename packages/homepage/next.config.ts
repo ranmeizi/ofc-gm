@@ -41,6 +41,12 @@ const nextConfig: NextConfig = {
 
 const withMDX = createMDX({
   extension: /\.(md|mdx)$/,
+  // Turbopack 要求 options 可序列化，插件用包名字符串
+  options: {
+    remarkPlugins: [],
+    rehypePlugins: [['rehype-highlight', {}]],
+  },
 })
 
 export default withMDX(nextConfig)
+

@@ -17,9 +17,11 @@
     "@ofc-gm/framework": "workspace:*",
     "@ofc-gm/ws": "workspace:*",
     "@types/mdx": "^2.0.14",
+    "highlight.js": "^11.12.0",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "rehype-highlight": "^7.0.2",
     "retro-react": "^1.6.0"
   },
   "devDependencies": {
